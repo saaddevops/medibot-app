@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediBot — AI Patient Triage</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+      --purple-50:  #faf5ff;
+      --purple-100: #f3e8ff;
+      --purple-200: #e9d5ff;
+      --purple-300: #d8b4fe;
+      --purple-400: #c084fc;
+      --purple-500: #a855f7;
+      --purple-600: #9333ea;
+      --purple-700: #7e22ce;
+      --purple-800: #6b21a8;
+      --purple-900: #581c87;
+      --white: #ffffff;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-600: #4b5563;
+      --gray-800: #1f2937;
+      --emergency: #ef4444;
+      --urgent: #f59e0b;
+      --normal: #10b981;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f0a1e;
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ANIMATED BACKGROUND */
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      animation: orbFloat 8s ease-in-out infinite;
+    }
+
+    .orb-1 { width:500px;height:500px;background:var(--purple-600);top:-100px;left:-100px;animation-delay:0s; }
+    .orb-2 { width:400px;height:400px;background:var(--purple-400);top:50%;right:-80px;animation-delay:-3s; }
+    .orb-3 { width:350px;height:350px;background:#6366f1;bottom:-100px;left:30%;animation-delay:-5s; }
+
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(30px,-30px) scale(1.05); }
+      66%      { transform: translate(-20px,20px) scale(0.95); }
+    }
+
+    /* HEADER */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(168,85,247,0.2);
+    }
+
+    .logo-wrap {
+      position: relative;
+      width: 52px; height: 52px;
+    }
+
+    .logo-pulse {
+      position: absolute;
+      inset: -4px;
+      border-radius: 16px;
+      background: var(--purple-500);
+      opacity: 0.3;
+      animation: logoPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+      0%,100% { transform: scale(1); opacity:0.3; }
+      50%      { transform: scale(1.15); opacity:0.1; }
+    }
+
+    .logo-icon {
+      position: relative;
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-400));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 0 20px rgba(168,85,247,0.5);
+    }
+
+    .header-text h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--purple-300));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-text p {
+      font-size: 0.8rem;
+      color: var(--purple-300);
+      font-weight: 400;
+    }
+
+    .header-badges {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid rgba(168,85,247,0.3);
+      background: rgba(168,85,247,0.1);
+      color: var(--purple-300);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--normal);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    /* MAIN */
+    .main {
+      position: relative;
+      z-index: 5;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* STATS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    @media(max-width:768px){ .stats-grid{grid-template-columns:repeat(2,1fr);} }
+
+    .stat-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(168,85,247,0.15);
+      border-radius: 20px;
+      padding: 1.3rem;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content:'';
+      position:absolute;
+      top:0;left:0;right:0;
+      height:2px;
+      background: linear-gradient(90deg, transparent, var(--purple-400), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover { transform:translateY(-4px); box-shadow: 0 20px 40px rgba(168,85,247,0.2); }
+    .stat-card:hover::before { opacity:1; }
+
+    .stat-num {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-lbl { font-size: 0.75rem; color: rgba(255,255,255,0.5); font-weight: 500; }
+
+    .stat-total   .stat-num { background:linear-gradient(135deg,#fff,var(--purple-300));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+    .stat-em      .stat-num { color: var(--emergency); }
+    .stat-urg     .stat-num { color: var(--urgent); }
+    .stat-norm    .stat-num { color: var(--normal); }
+
+    /* CONTENT GRID */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media(max-width:900px){ .content-grid{grid-template-columns:1fr;} }
+
+    /* CARD */
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(168,85,247,0.15);
+      border-radius: 24px;
+      padding: 1.8rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .card-title-icon {
+      width: 32px; height: 32px;
+      background: rgba(168,85,247,0.2);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    /* FORM */
+    .form-group { margin-bottom: 1.2rem; }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(168,85,247,0.25);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      color: white;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.25); }
+
+    input:focus, textarea:focus {
+      border-color: var(--purple-400);
+      background: rgba(168,85,247,0.1);
+      box-shadow: 0 0 0 4px rgba(168,85,247,0.1);
+    }
+
+    textarea { resize: vertical; min-height: 110px; }
+
+    /* SUBMIT BUTTON */
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-500), var(--purple-400));
+      background-size: 200% 200%;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      animation: gradientShift 3s ease infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .btn-submit::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-submit:hover::after { opacity: 1; }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(168,85,247,0.5); }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* RESULT CARD */
+    .result-area {
+      margin-top: 1.5rem;
+      display: none;
+      animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(20px) scale(0.96); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    .result-inner {
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid;
+    }
+
+    .result-inner.EMERGENCY {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.4);
+      box-shadow: 0 0 30px rgba(239,68,68,0.15);
+    }
+
+    .result-inner.URGENT {
+      background: rgba(245,158,11,0.1);
+      border-color: rgba(245,158,11,0.4);
+      box-shadow: 0 0 30px rgba(245,158,11,0.15);
+    }
+
+    .result-inner.NORMAL {
+      background: rgba(16,185,129,0.1);
+      border-color: rgba(16,185,129,0.4);
+      box-shadow: 0 0 30px rgba(16,185,129,0.15);
+    }
+
+    .triage-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .triage-icon {
+      width: 50px; height: 50px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+
+    .EMERGENCY .triage-icon { background: rgba(239,68,68,0.2); animation: emergencyPulse 1s ease-in-out infinite; }
+    .URGENT    .triage-icon { background: rgba(245,158,11,0.2); }
+    .NORMAL    .triage-icon { background: rgba(16,185,129,0.2); }
+
+    @keyframes emergencyPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+      50%     { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    }
+
+    .triage-level {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+
+    .EMERGENCY .triage-level { color: #fca5a5; }
+    .URGENT    .triage-level { color: #fcd34d; }
+    .NORMAL    .triage-level { color: #6ee7b7; }
+
+    .triage-patient { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .result-item {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 10px 14px;
+    }
+
+    .result-item-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 4px;
+    }
+
+    .result-item-value {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .result-summary {
+      grid-column: 1 / -1;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    /* HOW IT WORKS */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      min-width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-400));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(168,85,247,0.3);
+    }
+
+    .step-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 3px; }
+    .step-desc  { font-size: 0.8rem; color: rgba(255,255,255,0.45); line-height: 1.5; }
+
+    .feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 1.5rem;
+    }
+
+    .feature-tag {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(168,85,247,0.15);
+      border: 1px solid rgba(168,85,247,0.3);
+      color: var(--purple-300);
+    }
+
+    /* APPOINTMENTS */
+    .appts-card { grid-column: 1 / -1; }
+
+    .appts-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: rgba(255,255,255,0.5);
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .filter-btn:hover { border-color: var(--purple-400); color: var(--purple-300); }
+    .filter-btn.active-all       { background: rgba(168,85,247,0.2); border-color: var(--purple-400); color: var(--purple-300); }
+    .filter-btn.active-emergency { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+    .filter-btn.active-urgent    { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.5); color: #fcd34d; }
+    .filter-btn.active-normal    { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.5); color: #6ee7b7; }
+
+    .refresh-btn {
+      margin-left: auto;
+      padding: 7px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(168,85,247,0.3);
+      background: rgba(168,85,247,0.1);
+      color: var(--purple-300);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover { background: rgba(168,85,247,0.2); }
+
+    .appt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 450px;
+      overflow-y: auto;
+    }
+
+    .appt-list::-webkit-scrollbar { width: 4px; }
+    .appt-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 2px; }
+    .appt-list::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.3); border-radius: 2px; }
+
+    .appt-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 1rem 1.2rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.2s;
+      animation: itemIn 0.3s ease;
+    }
+
+    @keyframes itemIn {
+      from { opacity:0; transform: translateX(-10px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+
+    .appt-item:hover {
+      background: rgba(168,85,247,0.07);
+      border-color: rgba(168,85,247,0.2);
+      transform: translateX(4px);
+    }
+
+    .appt-badge {
+      min-width: 95px;
+      text-align: center;
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .appt-badge.EMERGENCY { background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .appt-badge.URGENT    { background:rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
+    .appt-badge.NORMAL    { background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.3); }
+
+    .appt-name     { font-size: 0.95rem; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 3px; }
+    .appt-symptoms { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-bottom: 3px; }
+    .appt-summary  { font-size: 0.8rem; color: rgba(255,255,255,0.6); font-style: italic; margin-bottom: 4px; }
+
+    .appt-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .appt-meta-item {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.35);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .appt-dept {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(168,85,247,0.15);
+      color: var(--purple-300);
+      border: 1px solid rgba(168,85,247,0.2);
+    }
+
+    .wait-badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.15);
+      color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: rgba(255,255,255,0.2);
+    }
+
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 0.8rem; opacity:0.4; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* SPINNER */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem; right: 1.5rem;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: none;
+      z-index: 999;
+      animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      backdrop-filter: blur(20px);
+      border: 1px solid;
+    }
+
+    .toast.success {
+      background: rgba(16,185,129,0.15);
+      border-color: rgba(16,185,129,0.4);
+      color: #6ee7b7;
+    }
+
+    .toast.error {
+      background: rgba(239,68,68,0.15);
+      border-color: rgba(239,68,68,0.4);
+      color: #fca5a5;
+    }
+
+    @keyframes toastIn {
+      from { opacity:0; transform:translateY(10px) scale(0.95); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    /* PARTICLE EFFECT ON EMERGENCY */
+    .emergency-alert {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      border: 3px solid rgba(239,68,68,0.6);
+      animation: ringExpand 1s ease-out forwards;
+    }
+
+    @keyframes ringExpand {
+      from { transform: translate(-50%,-50%) scale(0); opacity:1; }
+      to   { transform: translate(-50%,-50%) scale(8); opacity:0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="emergency-alert" id="emergencyAlert"></div>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-pulse"></div>
+    <div class="logo-icon">🏥</div>
+  </div>
+  <div class="header-text">
+    <h1>MediBot</h1>
+    <p>AI-Powered Patient Triage System</p>
+  </div>
+  <div class="header-badges">
+    <div class="badge"><span class="dot"></span> AWS Bedrock Agent</div>
+    <div class="badge">⚡ Claude 3 Haiku</div>
+    <div class="badge" id="live-count">📋 0 Today</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card stat-total">
+      <div class="stat-num" id="s-total">0</div>
+      <div class="stat-lbl">Total Appointments</div>
+    </div>
+    <div class="stat-card stat-em">
+      <div class="stat-num" id="s-em">0</div>
+      <div class="stat-lbl">🚨 Emergency</div>
+    </div>
+    <div class="stat-card stat-urg">
+      <div class="stat-num" id="s-urg">0</div>
+      <div class="stat-lbl">⚠️ Urgent</div>
+    </div>
+    <div class="stat-card stat-norm">
+      <div class="stat-num" id="s-norm">0</div>
+      <div class="stat-lbl">✅ Normal</div>
+    </div>
+  </div>
+
+  <!-- CONTENT GRID -->
+  <div class="content-grid">
+
+    <!-- BOOKING FORM -->
+    <div class="card">
+      <div class="card-title">
+        <div class="card-title-icon">📋</div>
+        Book Appointment
+      </div>
+
+      <div class="form-group">
+        <label>Patient Name</label>
+        <input type="text" id="patientName" placeholder="Enter full name"/>
+      </div>
+
+      <div class="form-group">
+        <label>Describe Symptoms</label>
+        <textarea id="symptoms" placeholder="Describe symptoms in detail... The AI agent will analyze them and determine urgency, suggest a department, and estimate your wait time."></textarea>
+      </div>
+
+      <button class="btn-submit" id="bookBtn" onclick="bookAppointment()">
+        <span id="btn-content">🤖 Analyze with AI Agent & Book</span>
+      </button>
+
+      <!-- RESULT -->
+      <div class="result-area" id="resultArea">
+        <div class="result-inner" id="resultInner">
+          <div class="triage-header">
+            <div class="triage-icon" id="resultIcon"></div>
+            <div>
+              <div class="triage-level" id="resultLevel"></div>
+              <div class="triage-patient" id="resultPatient"></div>
+            </div>
+          </div>
+          <div class="result-grid">
+            <div class="result-item">
+              <div class="result-item-label">🏥 Department</div>
+              <div class="result-item-value" id="resultDept"></div>
+            </div>
+            <div class="result-item">
+              <div class="result-item-label">⏱ Est. Wait Time</div>
+              <div class="result-item-value" id="resultWait"></div>
+            </div>
+            <div class="result-item result-summary">
+              <div class="result-item-label">🤖 AI Analysis</div>
+              <div class="result-item-value" id="resultSummary" style="font-style:italic;font-weight:400"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="card">
+      <div class="card-title">
+        <div class="card-title-icon">⚡</div>
+        How MediBot AI Agent Works
+      </div>
+
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Patient Submits Symptoms</div>
+            <div class="step-desc">Describe any symptoms in natural language — the AI understands context and severity cues</div>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">AWS Bedrock Agent Analyzes</div>
+            <div class="step-desc">Claude 3 Haiku powered agent reasons through symptoms with medical knowledge, determining urgency and care pathway</div>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Smart Triage + Routing</div>
+            <div class="step-desc">Agent assigns EMERGENCY / URGENT / NORMAL, suggests the right department, and estimates realistic wait time</div>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div>
+            <div class="step-title">Emergency Alerts</div>
+            <div class="step-desc">EMERGENCY cases instantly trigger AWS SNS notification to on-call medical staff — zero delay</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-tags">
+        <span class="feature-tag">🚨 SNS Alerts</span>
+        <span class="feature-tag">🏥 Dept Routing</span>
+        <span class="feature-tag">⏱ Wait Times</span>
+        <span class="feature-tag">🧠 Bedrock Agent</span>
+        <span class="feature-tag">🔒 Private ECR</span>
+        <span class="feature-tag">☸️ EKS Auto-Scale</span>
+      </div>
+    </div>
+
+    <!-- APPOINTMENTS LIST -->
+    <div class="card appts-card">
+      <div class="appts-top">
+        <div class="card-title" style="margin-bottom:0">
+          <div class="card-title-icon">📅</div>
+          All Appointments
+        </div>
+        <div class="filter-bar">
+          <button class="filter-btn active-all" onclick="filter('ALL',this)">All</button>
+          <button class="filter-btn" onclick="filter('EMERGENCY',this)">🚨 Emergency</button>
+          <button class="filter-btn" onclick="filter('URGENT',this)">⚠️ Urgent</button>
+          <button class="filter-btn" onclick="filter('NORMAL',this)">✅ Normal</button>
+        </div>
+        <button class="refresh-btn" onclick="loadAppts()">↻ Refresh</button>
+      </div>
+
+      <div class="appt-list" id="apptList">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No appointments yet — book the first one!</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let allAppts = [];
+  let currentFilter = 'ALL';
+
+  const icons  = { EMERGENCY:'🚨', URGENT:'⚠️', NORMAL:'✅' };
+  const labels = { EMERGENCY:'EMERGENCY', URGENT:'URGENT', NORMAL:'NORMAL' };
+
+  async function bookAppointment() {
+    const name     = document.getElementById('patientName').value.trim();
+    const symptoms = document.getElementById('symptoms').value.trim();
+    if (!name || !symptoms) { showToast('Please fill in both fields', 'error'); return; }
+
+    const btn = document.getElementById('bookBtn');
+    const bc  = document.getElementById('btn-content');
+    btn.disabled = true;
+    bc.innerHTML = '<div class="spinner"></div> Agent analyzing symptoms...';
+
+    try {
+      const res  = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientName: name, symptoms })
+      });
+      if (!res.ok) throw new Error('error');
+      const data = await res.json();
+      showResult(data);
+      document.getElementById('patientName').value = '';
+      document.getElementById('symptoms').value = '';
+      if (data.triageLevel === 'EMERGENCY') triggerEmergencyEffect();
+      loadAppts();
+      showToast(data.triageLevel === 'EMERGENCY' ? '🚨 EMERGENCY — SNS alert sent!' : '✅ Appointment booked!',
+                data.triageLevel === 'EMERGENCY' ? 'error' : 'success');
+    } catch(e) {
+      showToast('Error booking appointment. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      bc.innerHTML = '🤖 Analyze with AI Agent & Book';
+    }
+  }
+
+  function showResult(data) {
+    const area  = document.getElementById('resultArea');
+    const inner = document.getElementById('resultInner');
+
+    inner.className = 'result-inner ' + data.triageLevel;
+    document.getElementById('resultIcon').textContent    = icons[data.triageLevel];
+    document.getElementById('resultLevel').textContent   = labels[data.triageLevel];
+    document.getElementById('resultPatient').textContent = '👤 ' + data.patientName;
+    document.getElementById('resultDept').textContent    = data.suggestedDepartment || 'General';
+    document.getElementById('resultWait').textContent    = data.estimatedWaitTime   || 'N/A';
+    document.getElementById('resultSummary').textContent = data.aiSummary || '';
+
+    area.style.display = 'block';
+  }
+
+  async function loadAppts() {
+    try {
+      const res = await fetch('/api/appointments');
+      allAppts  = await res.json();
+      updateStats();
+      renderAppts();
+      document.getElementById('live-count').textContent = '📋 ' + allAppts.length + ' Today';
+    } catch(e) {}
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = allAppts.length;
+    document.getElementById('s-em').textContent    = allAppts.filter(a=>a.triageLevel==='EMERGENCY').length;
+    document.getElementById('s-urg').textContent   = allAppts.filter(a=>a.triageLevel==='URGENT').length;
+    document.getElementById('s-norm').textContent  = allAppts.filter(a=>a.triageLevel==='NORMAL').length;
+  }
+
+  function filter(level, btn) {
+    currentFilter = level;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.className = 'filter-btn';
+    });
+    btn.classList.add('active-' + level.toLowerCase());
+    renderAppts();
+  }
+
+  function renderAppts() {
+    const list    = document.getElementById('apptList');
+    const filtered = currentFilter === 'ALL' ? allAppts : allAppts.filter(a => a.triageLevel === currentFilter);
+
+    if (!filtered.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No appointments found</p></div>';
+      return;
+    }
+
+    list.innerHTML = [...filtered].reverse().map(a => `
+      <div class="appt-item">
+        <div class="appt-badge ${a.triageLevel}">${icons[a.triageLevel]} ${a.triageLevel}</div>
+        <div style="flex:1;min-width:0">
+          <div class="appt-name">${a.patientName}</div>
+          <div class="appt-symptoms">${a.symptoms}</div>
+          <div class="appt-summary">${a.aiSummary || ''}</div>
+          <div class="appt-meta">
+            ${a.suggestedDepartment ? `<span class="appt-dept">🏥 ${a.suggestedDepartment}</span>` : ''}
+            ${a.estimatedWaitTime   ? `<span class="wait-badge">⏱ ${a.estimatedWaitTime}</span>` : ''}
+            <span class="appt-meta-item">🕐 ${formatTime(a.bookedAt)}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function formatTime(t) {
+    if (!t) return '';
+    return new Date(t).toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' });
+  }
+
+  function triggerEmergencyEffect() {
+    const el = document.getElementById('emergencyAlert');
+    el.style.display = 'block';
+    el.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const ring = document.createElement('div');
+        ring.className = 'pulse-ring';
+        el.appendChild(ring);
+        setTimeout(() => ring.remove(), 1000);
+      }, i * 300);
+    }
+    setTimeout(() => { el.style.display = 'none'; }, 1500);
+  }
+
+  function showToast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3500);
+  }
+
+  loadAppts();
+  setInterval(loadAppts, 20000);
+</script>
+
+</body>
+</html>
