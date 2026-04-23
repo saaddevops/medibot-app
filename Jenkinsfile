@@ -18,9 +18,9 @@ pipeline {
     stages {
         stage('Git Checkout') {
             steps {
-                git branch: 'master',
+                git branch: 'main',
                     credentialsId: 'git',
-                    url: 'https://github.com/saikiranpi/medibot-app.git'
+                    url: 'https://github.com/saaddevops/medibot-app.git'
             }
         }
 
@@ -119,7 +119,7 @@ pipeline {
                             usernameVariable: 'GIT_USER',
                             passwordVariable: 'GIT_PASS')]) {
                         sh '''
-                            git clone https://${GIT_USER}:${GIT_PASS}@github.com/saikiranpi/medibot-manifests.git
+                            git clone https://${GIT_USER}:${GIT_PASS}@github.com/saaddevops/medibot-manifests.git
                             cd medibot-manifests
 
                             sed -i "s|image:.*medibot:.*|image: ${IMAGE_FULL}:${IMAGE_TAG}|g" deployment.yaml
@@ -128,7 +128,7 @@ pipeline {
                             git config user.email "jenkins@medibot.com"
                             git add deployment.yaml
                             git commit -m "Update image to ${IMAGE_TAG} [build #${BUILD_NUMBER}]"
-                            git push origin master
+                            git push origin main
                         '''
                     }
                 }
